@@ -2,32 +2,33 @@
 
 declare(strict_types=1);
 
-namespace Dragiyski\CommissionTask\Service\Money\Fx;
+namespace Dragiyski\CommissionTask\Service\Fx;
 
-use Dragiyski\CommissionTask\Service\Money\Amount;
-use Dragiyski\CommissionTask\Service\Money\Currency;
+use ArrayObject;
+use Dragiyski\CommissionTask\Model\Money\Amount;
+use Dragiyski\CommissionTask\Model\Money\Currency;
+use InvalidArgumentException;
 use SplObjectStorage;
 
-class SimpleConverter
+class SimpleConverter implements CurrencyConverterInterface
 {
     /**
      * @var SplObjectStorage<Currency, SplObjectStorage<Currency, string>
      */
+    private SplObjectStorage $rates;
 
     /**
-     * @var \SplObjectStorage<Currency, array>
+     * @var SplObjectStorage<Currency, ArrayObject>
      */
-    private \SplObjectStorage $rates;
-
-    private \SplObjectStorage $transitions;
+    private SplObjectStorage $transitions;
 
     public function __construct(array $rates)
     {
-        $this->rates = new \SplObjectStorage();
-        $this->transitions = new \SplObjectStorage();
+        $this->rates = new SplObjectStorage();
+        $this->transitions = new SplObjectStorage();
         foreach ($rates as $rate) {
             if (!is_array($rate) || count($rate) !== 3 || !($rate[0] instanceof Currency) || !($rate[1] instanceof Currency) || !is_numeric($rate[2])) {
-                throw new \InvalidArgumentException('Conversion rates must be array in form [Currency, Currency, exchange_rate]');
+                throw new InvalidArgumentException('Conversion rates must be array in form [Currency, Currency, exchange_rate]');
             }
             $this->register($rate[0], $rate[1], $rate[2]);
         }
@@ -36,17 +37,17 @@ class SimpleConverter
     public function register(Currency $source, Currency $target, string $exchangeRate)
     {
         if (!isset($this->rates[$source])) {
-            $this->rates[$source] = new \SplObjectStorage();
+            $this->rates[$source] = new SplObjectStorage();
         }
         if (isset($this->rates[$source][$target])) {
-            throw new \InvalidArgumentException("Duplicate exchange rate for {$source->symbol}:{$target->symbol}");
+            throw new InvalidArgumentException("Duplicate exchange rate for {$source->getSymbol()}:{$target->getSymbol()}");
         }
         $this->rates[$source][$target] = $exchangeRate;
         if (!isset($this->transitions[$source])) {
-            $this->transitions[$source] = new \ArrayObject();
+            $this->transitions[$source] = new ArrayObject();
         }
         if (!isset($this->transitions[$target])) {
-            $this->transitions[$target] = new \ArrayObject();
+            $this->transitions[$target] = new ArrayObject();
         }
         $this->transitions[$source][] = [$source, $target];
         $this->transitions[$target][] = [$source, $target];
@@ -79,11 +80,11 @@ class SimpleConverter
             return null;
         }
         // The source currency has no parent
-        /** @var \SplObjectStorage<Currency, Currency> $parent */
-        $parent = new \SplObjectStorage();
+        /** @var SplObjectStorage<Currency, Currency> $parent */
+        $parent = new SplObjectStorage();
         $parent[$source] = null;
         // Speed up the process by avoiding re-evaluating currencies from the previous loop
-        $evaluated = new \SplObjectStorage();
+        $evaluated = new SplObjectStorage();
         while (!$parent->contains($target)) {
             // If there is no path, eventually all that can be evaluated will be evaluated and no updates will occur
             $updated = false;
@@ -122,14 +123,14 @@ class SimpleConverter
         return $path;
     }
 
-    protected function _convert(Currency $source, Currency $target, string $value): string
+    public function convert(Amount $sourceAmount, Currency $targetCurrency): Amount
     {
-        $path = $this->find_conversion_path($source, $target);
+        $path = $this->find_conversion_path($sourceAmount->getCurrency(), $targetCurrency);
         if (is_null($path)) {
-            throw new \InvalidArgumentException("No known conversion from {$source->symbol} to {$target->symbol}");
+            throw new InvalidArgumentException("No known conversion from {$sourceAmount->getCurrency()->getSymbol()} to {$targetCurrency->getSymbol()}");
         }
         $pathLength = count($path);
-        $currentValue = $value;
+        $currentValue = $sourceAmount->getValue();
         // $currentValue is considered in $path[0] currency.
         for ($i = 1; $i < $pathLength; ++$i) {
             $currentSource = $path[$i - 1];
@@ -142,15 +143,10 @@ class SimpleConverter
                 $currentValue = $currentTarget->roundUp->div($currentValue, $exchangeRate);
             } else {
                 // This should not happen if find_conversion_path() works correctly.
-                throw new \InvalidArgumentException("No known conversion from {$source->symbol} to {$target->symbol}");
+                throw new InvalidArgumentException("No known conversion from {$sourceAmount->getCurrency()->getSymbol()} to {$targetCurrency->getSymbol()}");
             }
         }
 
-        return $currentValue;
-    }
-
-    public function convert(Amount $amount, Currency $currency): Amount
-    {
-        return new Amount($this->_convert($amount->currency, $currency, $amount->value), $currency);
+        return $sourceAmount->set($currentValue, $targetCurrency);
     }
 }
