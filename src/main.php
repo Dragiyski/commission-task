@@ -18,16 +18,19 @@ if (count($args) < 2) {
 $sourceFile = $args[1];
 
 if ($sourceFile === '-') {
-    $sourceFile = 'php://stdin';
+    // Ideally we want stream here, so createFromPath('php://stdin') could work,
+    // but the league/csv throws if the stream is not seekable?
+    // Current solution is not efficient, but can be updated later.
+    $reader = Reader::createFromString(file_get_contents('php://stdin'));
 } else {
     $sourceFile = realpath($sourceFile);
     if ($sourceFile === false) {
         error_log("File \"{$args[1]}\" does not exists or it is not readable file.");
         exit(1);
     }
+    $reader = Reader::createFromPath($sourceFile, 'r');
 }
 
-$reader = Reader::createFromPath($sourceFile, 'r');
 $reader->setEscape('');
 
 $weekIndex = [];
