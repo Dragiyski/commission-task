@@ -30,8 +30,7 @@ class KeyMatchRule implements FeeRuleInterface
 
     public function compute($record): Amount
     {
-        if (isset($record[$this->key]))
-        {
+        if (isset($record[$this->key])) {
             $value = $record[$this->key];
             if (isset($this->values[$value])) {
                 return $this->values[$value]->compute($record);

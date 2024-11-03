@@ -26,7 +26,7 @@ $services['currencies'] = new CurrencySet([
 
 $services['currency.converter'] = new SimpleConverter([
     [$services['currencies']->get('EUR'), $services['currencies']->get('USD'), '1.1497'],
-    [$services['currencies']->get('EUR'), $services['currencies']->get('JPY'), '129.53']
+    [$services['currencies']->get('EUR'), $services['currencies']->get('JPY'), '129.53'],
 ]);
 
 $services['record.header'] = ['date', 'user_id', 'user_type', 'operation_type', 'amount', 'currency'];
@@ -73,6 +73,6 @@ $services['commission'] = new KeyMatchRule('operation_type', [
                 '0.003' // 0.3%
             ),
             new RatePrincipleRule($services['record.principal'], '0.003') // 0.3%
-        )
-    ])
+        ),
+    ]),
 ]);

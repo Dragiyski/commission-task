@@ -13,16 +13,16 @@ class MaxDiscountRule implements FeeRuleInterface
         protected readonly CountAggregator $usedDiscount,
         protected readonly int $maxDiscount,
         protected readonly FeeRuleInterface $discountRule,
-        protected readonly FeeRuleInterface $regularRule
-    )
-    {
+        protected readonly FeeRuleInterface $regularRule,
+    ) {
     }
 
     public function compute($record): Amount
     {
         $used = $this->usedDiscount->get($record);
-        $rule = $used < $this->maxDiscount ?$this->discountRule : $this->regularRule;
+        $rule = $used < $this->maxDiscount ? $this->discountRule : $this->regularRule;
         $this->usedDiscount->append($record);
+
         return $rule->compute($record);
     }
 }
