@@ -24,6 +24,12 @@ composer install
 
 to install all dependencies.
 
+### API
+
+This script uses third party APIs from [https://exchangeratesapi.io/](https://exchangeratesapi.io/) in production. Modify `config/prod.services.php` replacing `REPLACE_WITH_ACTUAL_API_KEY` string with your API key for that service. This production uses `convert` service endpoint (not available for the free API keys).
+
+To pass an API key by environment variable instead use replace the aforementioned text with `getenv(YOUR_VARIABLE)` or even better: use dotenv files.
+
 ## Usage
 
 To use the commission task for computation of commission fee on a CSV file, execute:
@@ -38,12 +44,24 @@ or
 php src/main.php my-csv-file.csv
 ```
 
+Running in production should specify the environment in `APP_ENV` variable.
+
+```
+APP_ENV=prod php src/main.php my-csv-file.csv
+```
+
 ### With Docker
 
 If installed as docker image, the commission task can be run by:
 
 ```
 docker run -i --rm commission-task - < my-csv-file.csv
+```
+
+or with specific environment:
+
+```
+docker run --env APP_ENV=prod -i --rm commission-task - < my-csv-file.csv
 ```
 
 ## Input
@@ -59,23 +77,11 @@ The CSV file should match the provided CSV input. Namely it should contain colum
 
 ## Rules
 
-### Deposit rule
+The fee for deposit transactions is 0.03%.
 
-The rule apply 0.03% of the record base value (principal).
+The fee for business client withdraw is 0.5%.
 
-### Withdraw rule
-
-Charged based on the user type
-
-#### Business clients
-
-The rule apply 0.5% of the record base value.
-
-#### Private clients
-
-The rules apply 0.3% of the record base value (withdrawn amount).
-
-For the first 3 transactions, there is total combined discount up to `1000.00 EUR`.
+The fee for private client withdraw is 0.3%, however, private clients receive up to EUR 1000.00 (equivalent to the transaction currency) discount for the first three transactions each week (Mon-Sun). If transaction exceeds EUR 1000.00, 0.3% is applied to the exceeding amount only.
 
 ## Structure
 
@@ -87,3 +93,14 @@ Therefore the current functionality can be extended by modifying the dependency-
 
 The class `Model\AmountAt` can also be used with potential future currency converter that support historical data. This can be done with no modification of the current code and simple `$amount instanceof AmountAt`. The current currency converter uses hardcoded currency exchange rates, as this is required for deterministic testing. Additionally most FX APIs with access to historical data are paid and they have limitation on number of API calls. As such this task is does not implement usage of 3rd-party API to get actual exchange rates, but it can be modified to do so, if necessary.
 
+## Caveats
+
+It is a requirement for the script to do all compilations in memory. Cache files, databases and other persistant storage is not supported. As such the script will not store any request and it can do 1-3 API requests per transaction. Make sure not to process large CSV files that can exhaust the number of available API calls to from [https://exchangeratesapi.io/](https://exchangeratesapi.io/) for your access key.
+
+# Nockups
+
+The project now contains simulation/mockup of the third-party service [https://exchangeratesapi.io/](https://exchangeratesapi.io/). The conversion rates in this service are random values between `0.1` and `2.0`, but deterministic (i.e. same value will be returned for the same currency set and the same date). Do note that the mockup does not guarantee proper currency inversion: for example `EURUSD` divided by `USDEUR` will not be unlikely to result in `1.00`.
+
+To run the mockup, enter `mockup/exchangeratesapi.io` and run `docker-composer up`.
+
+**Note:** Despite specification in `depends_on`, in certain versions of docker compose it is possible that `nginx` runs before `wsgi`, resulting in exiting with error code 137. This could happen when run for the first time after rebuild. Newer versions of docker compose allow more precise specification, telling that `wsgi` must not only be in "started", but "healthy" state before `nginx` run, and restart the `nginx` automatically if that is not the case. If you see the above error, please restart the compose manually or update compose to the latest version.

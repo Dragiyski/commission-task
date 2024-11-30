@@ -1,13 +1,15 @@
 # Use an official PHP runtime as a parent image
-FROM php:cli
+# FROM php:cli
+FROM composer:latest
 
-RUN apt-get update -y && \
-    apt-get install -y libcurl4-openssl-dev
+RUN apk add --no-cache \
+    curl
 
 # Install any needed packages specified in composer.json
-RUN curl -sS https://getcomposer.org/installer | php && \
-    mv composer.phar /usr/local/bin/composer
+# RUN curl -sS https://getcomposer.org/installer | php && \
+#     mv composer.phar /usr/local/bin/composer
 
+# This does not work, yet, but it can be debugged and made to work.
 # RUN extensions=$(composer show -p | grep ext- | cut -d ' ' -f1 | sed 's/ext-//g') && \
 #     docker-php-ext-install $extensions
 

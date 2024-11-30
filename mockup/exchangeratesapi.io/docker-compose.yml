@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  wsgi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./app:/usr/src/app
+    networks:
+      - exchangerateapi
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "127.0.0.1:8080:80"
+    environment:
+      - WSGI_HOST=wsgi
+      - WSGI_PORT=8000
+    volumes:
+      - ./wsgi.conf.template:/etc/nginx/templates/default.conf.template
+    networks:
+      - exchangerateapi
+    depends_on:
+      - wsgi
+
+networks:
+  exchangerateapi:

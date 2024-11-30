@@ -3,7 +3,17 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/test.services.php';
+
+$env = getenv('APP_ENV');
+if (empty($env)) {
+    $env = 'dev';
+}
+
+if (preg_match('/[a-zA-Z][a-zA-Z0-9-_]*/', $env) === false) {
+    throw new RuntimeException('Invalid environment');
+}
+
+require_once __DIR__ . "/../config/{$env}.services.php";
 
 use League\Csv\Reader;
 

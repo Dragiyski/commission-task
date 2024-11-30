@@ -21,7 +21,7 @@ class AmountAggregator implements AggregatorInterface, PrincipalInterface
     public function __construct(
         protected readonly CurrencyConverterInterface $converter,
         protected readonly KeyGeneratorInterface $keyGenerator,
-        protected readonly PrincipalInterface $principle,
+        protected readonly PrincipalInterface $principal,
         protected readonly Currency $currency,
     ) {
     }
@@ -29,7 +29,7 @@ class AmountAggregator implements AggregatorInterface, PrincipalInterface
     public function append($record)
     {
         $key = $this->keyGenerator->generate($record);
-        $sourceAmount = $this->principle->getAmount($record);
+        $sourceAmount = $this->principal->getAmount($record);
         if (!isset($this->items[$key])) {
             $this->items[$key] = '0';
         }
@@ -40,7 +40,7 @@ class AmountAggregator implements AggregatorInterface, PrincipalInterface
     public function getAmount($record): Amount
     {
         $key = $this->keyGenerator->generate($record);
-        $amount = $this->principle->getAmount($record);
+        $amount = $this->principal->getAmount($record);
         if (!isset($this->items[$key])) {
             return $amount->set('0');
         }
